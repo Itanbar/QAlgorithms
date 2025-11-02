@@ -54,7 +54,7 @@ function formatAmplitude(value) {
 }
 
 function formatProbability(value) {
-  return (value * value).toFixed(3);
+  return value.toFixed(3);
 }
 
 function createStateCard(state, index) {
