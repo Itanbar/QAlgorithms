@@ -1,11 +1,12 @@
-const NUM_QUBITS = 5;
-const NUM_STATES = 1 << NUM_QUBITS;
-const TARGET_INDEX = NUM_STATES - 1; // |11111⟩
-const INITIAL_AMPLITUDE = 1 / Math.sqrt(NUM_STATES);
-const OPTIMAL_ITERATIONS = Math.round((Math.PI / 4) * Math.sqrt(NUM_STATES));
-const MAX_ITERATIONS = OPTIMAL_ITERATIONS + 4;
+const STATES = [
+  { label: "|00⟩", amplitude: 0.5 },
+  { label: "|01⟩", amplitude: 0.5 },
+  { label: "|10⟩", amplitude: 0.5 },
+  { label: "|11⟩", amplitude: 0.5 },
+];
 
-const BASE_STATES = createInitialStates();
+const TARGET_INDEX = 3; // |11>
+const MAX_ITERATIONS = 4;
 
 let currentStates = [];
 let cardElements = [];
@@ -44,15 +45,8 @@ const phaseDescriptions = [
   },
 ];
 
-function createInitialStates() {
-  return Array.from({ length: NUM_STATES }, (_, index) => ({
-    label: `|${index.toString(2).padStart(NUM_QUBITS, "0")}⟩`,
-    amplitude: INITIAL_AMPLITUDE,
-  }));
-}
-
 function cloneInitialStates() {
-  return BASE_STATES.map((state) => ({ ...state }));
+  return STATES.map((state) => ({ ...state }));
 }
 
 function formatAmplitude(value) {
@@ -132,21 +126,18 @@ function initialiseView() {
 }
 
 function updateStateCards(states) {
-  const MIN_VISIBLE_SCALE = 0.04;
+  const SCALE = 200; // Matches half the bar height (200px total)
   states.forEach((state, index) => {
     const elements = cardElements[index];
     const amplitude = state.amplitude;
     const probability = amplitude * amplitude;
-    const absAmplitude = Math.min(Math.abs(amplitude), 1);
-    const scale = amplitude === 0 ? 0 : Math.max(absAmplitude, MIN_VISIBLE_SCALE);
+    const scaled = Math.min(Math.abs(amplitude), 1) * SCALE;
 
-    elements.positiveFill.style.transform = `scaleY(${amplitude > 0 ? scale : 0})`;
-    elements.negativeFill.style.transform = `scaleY(${amplitude < 0 ? scale : 0})`;
+    elements.positiveFill.style.transform = `scaleY(${amplitude > 0 ? scaled / SCALE : 0})`;
+    elements.negativeFill.style.transform = `scaleY(${amplitude < 0 ? scaled / SCALE : 0})`;
 
     elements.amplitudeLine.textContent = `Amplitude: ${formatAmplitude(amplitude)}`;
-    elements.probabilityLine.textContent = `Probability: ${formatProbability(
-      probability,
-    )}`;
+    elements.probabilityLine.textContent = `Probability: ${formatProbability(probability)}`;
   });
 }
 
