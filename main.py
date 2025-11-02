@@ -1,13 +1,4 @@
-import importlib.util
-import sys
 from pathlib import Path
-
-if importlib.util.find_spec("flask") is None:
-    sys.exit(
-        "Flask is required to run this application. Install dependencies with "
-        "`pip install -r requirements.txt`."
-    )
-
 from flask import Flask, render_template
 
 app = Flask(__name__)
