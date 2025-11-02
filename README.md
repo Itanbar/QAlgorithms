@@ -1,6 +1,6 @@
 # Grover's Algorithm Animation Web App
 
-This project provides an interactive visualization of Grover's search algorithm. It uses a small Flask server to host the HTML, CSS, and JavaScript assets that drive the animation.
+This project provides an interactive visualization of Grover's search algorithm over five qubits. It uses a small Flask server to host the HTML, CSS, and JavaScript assets that drive the animation.
 
 ## Prerequisites
 * Python 3.10+
