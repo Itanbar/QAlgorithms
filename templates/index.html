@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grover's Algorithm Visualiser</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="page__header">
+        <h1>Grover's Algorithm Animation</h1>
+        <p>
+          This interactive animation shows how Grover's search algorithm boosts the
+          amplitude of the marked state. We use five qubits so there are thirty-two basis
+          states, and mark the <strong>|11111⟩</strong> state as the correct answer.
+        </p>
+      </header>
+
+      <section class="controls">
+        <button id="start-btn" type="button">Start</button>
+        <button id="pause-btn" type="button" disabled>Pause</button>
+        <button id="step-btn" type="button">Step</button>
+        <button id="reset-btn" type="button">Reset</button>
+        <label class="controls__speed">
+          Speed
+          <input id="speed-range" type="range" min="600" max="2000" value="1200" />
+        </label>
+      </section>
+
+      <section class="visualisation">
+        <div class="visualisation__states" id="state-container"></div>
+        <aside class="visualisation__info">
+          <h2>Step description</h2>
+          <p id="step-description">Click start to run Grover's iterate.</p>
+          <p class="visualisation__phase">
+            <span>Current phase:</span>
+            <strong id="phase-label">Idle</strong>
+          </p>
+          <div class="legend">
+            <span class="legend__item legend__item--positive">positive amplitude</span>
+            <span class="legend__item legend__item--negative">negative amplitude</span>
+          </div>
+          <div class="iteration">
+            <span>Iteration:</span>
+            <strong id="iteration-count">0</strong>
+          </div>
+          <div class="target">
+            <span>Target probability:</span>
+            <strong id="target-probability">3.1%</strong>
+          </div>
+        </aside>
+      </section>
+
+      <section class="explanation">
+        <h2>How it works</h2>
+        <ol>
+          <li>
+            The <strong>oracle</strong> marks the solution by flipping the sign of its amplitude.
+          </li>
+          <li>
+            The <strong>diffusion operator</strong> reflects all amplitudes around their average,
+            increasing the marked state's amplitude and decreasing the others.
+          </li>
+          <li>
+            Repeating the oracle and diffusion causes the marked state's probability to
+            grow rapidly. With thirty-two elements the optimal number of iterations is about
+            four, but we let the animation continue so you can observe the oscillation.
+          </li>
+        </ol>
+      </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/grover.js') }}" defer></script>
+  </body>
+</html>
