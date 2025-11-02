@@ -1,43 +1,60 @@
-const DEFAULT_QUBITS = 5;
-const MIN_QUBITS = 2;
-const MAX_QUBITS = 6;
+const STATES = [
+  { label: "|00⟩", amplitude: 0.5 },
+  { label: "|01⟩", amplitude: 0.5 },
+  { label: "|10⟩", amplitude: 0.5 },
+  { label: "|11⟩", amplitude: 0.5 },
+];
 
-let config = createConfig(DEFAULT_QUBITS);
+const TARGET_INDEX = 3; // |11>
+const MAX_ITERATIONS = 4;
+
 let currentStates = [];
 let cardElements = [];
 let iteration = 0;
+let phaseIndex = 0;
 let isRunning = false;
 let timerHandle = null;
 let animationDelay = 1200;
 
-function createConfig(numQubits) {
-  const qubits = Math.max(MIN_QUBITS, Math.min(MAX_QUBITS, numQubits));
-  const numStates = 1 << qubits;
-  const optimalIterations = Math.max(
-    1,
-    Math.round((Math.PI / 4) * Math.sqrt(numStates)),
-  );
-  const maxIterations = optimalIterations + 4;
+const phaseDescriptions = [
+  {
+    label: "Oracle",
+    apply: (states) => {
+      const before = states[TARGET_INDEX].amplitude;
+      states[TARGET_INDEX].amplitude *= -1;
+      const after = states[TARGET_INDEX].amplitude;
+      return `Flips the target amplitude from ${formatAmplitude(
+        before,
+      )} to ${formatAmplitude(after)}.`;
+    },
+  },
+  {
+    label: "Diffusion",
+    apply: (states) => {
+      const mean =
+        states.reduce((sum, state) => sum + state.amplitude, 0) / states.length;
+      states.forEach((state) => {
+        state.amplitude = 2 * mean - state.amplitude;
+      });
+      iteration += 1;
+      const targetAmplitude = states[TARGET_INDEX].amplitude;
+      return `Reflects amplitudes about the mean ${formatAmplitude(
+        mean,
+      )}, boosting the target to ${formatAmplitude(targetAmplitude)}.`;
+    },
+  },
+];
 
-  return {
-    numQubits: qubits,
-    numStates,
-    targetIndex: numStates - 1,
-    initialAmplitude: 1 / Math.sqrt(numStates),
-    optimalIterations,
-    maxIterations,
-  };
+function cloneInitialStates() {
+  return STATES.map((state) => ({ ...state }));
 }
 
-function getTargetLabel() {
-  return `|${"1".repeat(config.numQubits)}⟩`;
+function formatAmplitude(value) {
+  return value.toFixed(3);
 }
 
-function createInitialStates() {
-  return Array.from({ length: config.numStates }, (_, index) => ({
-    label: `|${index.toString(2).padStart(config.numQubits, "0")}⟩`,
-    amplitude: config.initialAmplitude,
-  }));
+function formatProbability(value) {
+  return value.toFixed(3);
 }
 
 function createStateCard(state, index) {
@@ -46,7 +63,7 @@ function createStateCard(state, index) {
 
   const title = document.createElement("div");
   title.className = "state-card__label";
-  if (index === config.targetIndex) {
+  if (index === TARGET_INDEX) {
     title.classList.add("state-card__label--target");
   }
   title.textContent = state.label;
@@ -89,11 +106,11 @@ function createStateCard(state, index) {
 }
 
 function initialiseView() {
-  currentStates = createInitialStates();
-  iteration = 0;
-
   const container = document.getElementById("state-container");
   container.innerHTML = "";
+  currentStates = cloneInitialStates();
+  iteration = 0;
+  phaseIndex = 0;
 
   cardElements = currentStates.map((state, index) => {
     const elements = createStateCard(state, index);
@@ -103,56 +120,24 @@ function initialiseView() {
 
   updateStateCards(currentStates);
   updateIteration();
+  updateDescription("Click start to run Grover's iterate.");
+  updatePhaseLabel("Idle");
   updateTargetProbability();
-  updateTargetStateLabel();
-  updateDescription(introMessage());
-  updateStatusLabel("Idle");
-
-  const qubitSelect = document.getElementById("qubit-select");
-  if (qubitSelect) {
-    qubitSelect.value = String(config.numQubits);
-  }
-}
-
-function introMessage() {
-  return `Ready to search ${config.numStates} states. The oracle marks ${getTargetLabel()} as the solution. Use Start for continuous iterations or Step to apply the Grover iterate once.`;
-}
-
-function formatFixed(value, decimals) {
-  if (!Number.isFinite(value)) {
-    return "NaN";
-  }
-  const rounded = value.toFixed(decimals);
-  return Number(rounded) === 0 ? (0).toFixed(decimals) : rounded;
-}
-
-function formatAmplitude(value) {
-  return formatFixed(value, 3);
-}
-
-function formatProbability(value) {
-  return formatFixed(Math.max(0, value), 3);
 }
 
 function updateStateCards(states) {
-  const MIN_VISIBLE_SCALE = 0.04;
+  const SCALE = 200; // Matches half the bar height (200px total)
   states.forEach((state, index) => {
     const elements = cardElements[index];
-    if (!elements) {
-      return;
-    }
     const amplitude = state.amplitude;
-    const probability = Math.max(0, amplitude * amplitude);
-    const absAmplitude = Math.min(Math.abs(amplitude), 1);
-    const scale = amplitude === 0 ? 0 : Math.max(absAmplitude, MIN_VISIBLE_SCALE);
+    const probability = amplitude * amplitude;
+    const scaled = Math.min(Math.abs(amplitude), 1) * SCALE;
 
-    elements.positiveFill.style.transform = `scaleY(${amplitude > 0 ? scale : 0})`;
-    elements.negativeFill.style.transform = `scaleY(${amplitude < 0 ? scale : 0})`;
+    elements.positiveFill.style.transform = `scaleY(${amplitude > 0 ? scaled / SCALE : 0})`;
+    elements.negativeFill.style.transform = `scaleY(${amplitude < 0 ? scaled / SCALE : 0})`;
 
     elements.amplitudeLine.textContent = `Amplitude: ${formatAmplitude(amplitude)}`;
-    elements.probabilityLine.textContent = `Probability: ${formatProbability(
-      probability,
-    )}`;
+    elements.probabilityLine.textContent = `Probability: ${formatProbability(probability)}`;
   });
 }
 
@@ -166,90 +151,55 @@ function updateIteration() {
   element.textContent = iteration.toString();
 }
 
-function updateStatusLabel(label) {
-  const element = document.getElementById("status-label");
+function updatePhaseLabel(label) {
+  const element = document.getElementById("phase-label");
   element.textContent = label;
 }
 
 function updateTargetProbability() {
-  if (!currentStates.length) {
-    return;
-  }
-  const amplitude = currentStates[config.targetIndex].amplitude;
-  const probability = Math.max(0, amplitude * amplitude);
-  const percent = Math.max(0, probability * 100);
-  const rounded = percent.toFixed(1);
-  const safeRounded = Number(rounded) === 0 ? (0).toFixed(1) : rounded;
-
+  const amplitude = currentStates[TARGET_INDEX].amplitude;
+  const probability = amplitude * amplitude;
   const element = document.getElementById("target-probability");
-  element.textContent = `${safeRounded}%`;
+  element.textContent = `${(probability * 100).toFixed(1)}%`;
 }
 
-function updateTargetStateLabel() {
-  const element = document.getElementById("target-state");
-  if (element) {
-    element.textContent = getTargetLabel();
-  }
-}
-
-function scheduleNextStep() {
+function scheduleNextPhase() {
   clearTimeout(timerHandle);
-  timerHandle = setTimeout(runStep, animationDelay);
+  timerHandle = setTimeout(runPhase, animationDelay);
 }
 
-function runStep() {
+function runPhase() {
   if (!isRunning) {
     return;
   }
 
-  if (!executeGroverStep()) {
+  if (!executePhase()) {
     return;
   }
 
-  scheduleNextStep();
+  scheduleNextPhase();
 }
 
-function executeGroverStep({ manual = false } = {}) {
-  if (iteration >= config.maxIterations) {
+function executePhase() {
+  if (iteration >= MAX_ITERATIONS) {
     completeAnimation();
     return false;
   }
 
-  const targetIndex = config.targetIndex;
-  const targetLabel = getTargetLabel();
-
-  const amplitudeBefore = currentStates[targetIndex].amplitude;
-  const amplitudeAfterOracle = applyOracle(currentStates, targetIndex);
-  const mean = applyDiffusion(currentStates);
-  iteration += 1;
-
-  const amplitudeAfter = currentStates[targetIndex].amplitude;
-  const probability = Math.max(0, amplitudeAfter * amplitudeAfter);
+  const phase = phaseDescriptions[phaseIndex];
+  const detail = phase.apply(currentStates);
 
   updateStateCards(currentStates);
-  updateIteration();
+  updateDescription(`${phase.label}: ${detail}`);
+  updatePhaseLabel(phase.label);
   updateTargetProbability();
 
-  const description = [
-    `Iteration ${iteration}:`,
-    `oracle inverted ${targetLabel} (${formatAmplitude(amplitudeBefore)} → ${formatAmplitude(
-      amplitudeAfterOracle,
-    )})`,
-    `and diffusion reflected around the mean ${formatAmplitude(mean)},`,
-    `yielding amplitude ${formatAmplitude(amplitudeAfter)} (probability ${formatProbability(
-      probability,
-    )}).`,
-  ].join(" ");
-
-  updateDescription(description);
-
-  if (isRunning) {
-    updateStatusLabel("Running");
-  } else if (manual) {
-    updateStatusLabel("Manual step");
+  phaseIndex = (phaseIndex + 1) % phaseDescriptions.length;
+  if (phaseIndex === 0) {
+    updateIteration();
   }
 
-  if (iteration >= config.maxIterations) {
+  if (iteration >= MAX_ITERATIONS) {
     completeAnimation();
     return false;
   }
@@ -257,76 +207,47 @@ function executeGroverStep({ manual = false } = {}) {
   return true;
 }
 
-function applyOracle(states, targetIndex) {
-  states[targetIndex].amplitude *= -1;
-  return states[targetIndex].amplitude;
-}
-
-function applyDiffusion(states) {
-  const mean =
-    states.reduce((sum, state) => sum + state.amplitude, 0) / states.length;
-  states.forEach((state) => {
-    state.amplitude = 2 * mean - state.amplitude;
-  });
-  return mean;
-}
-
 function startAnimation() {
   if (isRunning) {
     return;
   }
-  if (iteration >= config.maxIterations) {
-    return;
-  }
-
   isRunning = true;
   document.getElementById("start-btn").setAttribute("disabled", "true");
   document.getElementById("pause-btn").removeAttribute("disabled");
   document.getElementById("step-btn").setAttribute("disabled", "true");
-  updateStatusLabel("Running");
-  runStep();
+  runPhase();
 }
 
-function stopAnimation({ status = "Paused", allowResume = true } = {}) {
+function stopAnimation() {
   isRunning = false;
   clearTimeout(timerHandle);
   document.getElementById("pause-btn").setAttribute("disabled", "true");
-  if (allowResume) {
-    document.getElementById("start-btn").removeAttribute("disabled");
-    document.getElementById("step-btn").removeAttribute("disabled");
-  } else {
-    document.getElementById("start-btn").setAttribute("disabled", "true");
-    document.getElementById("step-btn").setAttribute("disabled", "true");
-  }
-  updateStatusLabel(status);
+  document.getElementById("start-btn").removeAttribute("disabled");
+  document.getElementById("step-btn").removeAttribute("disabled");
 }
 
 function completeAnimation() {
-  const element = document.getElementById("step-description");
-  element.textContent = `${element.textContent} Maximum of ${config.maxIterations} Grover iterations reached for this configuration. Reset to start again or choose a different qubit count.`;
-  stopAnimation({ status: "Complete", allowResume: false });
+  stopAnimation();
+  document.getElementById("start-btn").setAttribute("disabled", "true");
+  document.getElementById("step-btn").setAttribute("disabled", "true");
+  updatePhaseLabel("Complete");
+  updateDescription(
+    "Animation complete – Grover has boosted the marked state. Reset to run again.",
+  );
 }
 
 function resetAnimation() {
-  stopAnimation({ status: "Idle" });
-  initialiseView();
-}
-
-function setQubitCount(qubits) {
-  const clamped = Math.max(MIN_QUBITS, Math.min(MAX_QUBITS, Number(qubits)));
-  if (clamped === config.numQubits) {
-    return;
-  }
-  stopAnimation({ status: "Idle" });
-  config = createConfig(clamped);
-  initialiseView();
-}
-
-function updateAnimationDelay(value) {
-  animationDelay = Number(value);
-  if (isRunning) {
-    scheduleNextStep();
-  }
+  stopAnimation();
+  currentStates = cloneInitialStates();
+  iteration = 0;
+  phaseIndex = 0;
+  updateStateCards(currentStates);
+  updateIteration();
+  updateDescription("Click start to run Grover's iterate.");
+  updatePhaseLabel("Idle");
+  updateTargetProbability();
+  document.getElementById("start-btn").removeAttribute("disabled");
+  document.getElementById("step-btn").removeAttribute("disabled");
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -337,10 +258,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.getElementById("pause-btn").addEventListener("click", () => {
-    if (!isRunning) {
-      return;
-    }
-    stopAnimation({ status: "Paused" });
+    stopAnimation();
   });
 
   document.getElementById("reset-btn").addEventListener("click", () => {
@@ -349,19 +267,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("step-btn").addEventListener("click", () => {
     if (isRunning) {
-      stopAnimation({ status: "Paused" });
+      stopAnimation();
     }
-    executeGroverStep({ manual: true });
+    executePhase();
   });
 
   document.getElementById("speed-range").addEventListener("input", (event) => {
-    updateAnimationDelay(event.target.value);
+    animationDelay = Number(event.target.value);
+    if (isRunning) {
+      scheduleNextPhase();
+    }
   });
-
-  const qubitSelect = document.getElementById("qubit-select");
-  if (qubitSelect) {
-    qubitSelect.addEventListener("change", (event) => {
-      setQubitCount(Number(event.target.value));
-    });
-  }
 });

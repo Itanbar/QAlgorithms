@@ -66,35 +66,8 @@ body {
   box-shadow: 0 10px 24px rgba(89, 104, 255, 0.5);
 }
 
-.controls__qubits {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  font-size: 0.9rem;
-}
-
-.controls__qubits select {
-  background: rgba(15, 20, 40, 0.72);
-  color: #f6f7fb;
-  border: 1px solid rgba(120, 130, 170, 0.4);
-  border-radius: 999px;
-  padding: 0.45rem 1.6rem 0.45rem 0.9rem;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
-}
-
-.controls__qubits select:hover {
-  background: rgba(21, 28, 52, 0.9);
-}
-
-.controls__qubits select:focus-visible {
-  outline: 2px solid #5968ff;
-  outline-offset: 2px;
-}
-
 .controls__speed {
+  margin-left: auto;
   display: flex;
   align-items: center;
   gap: 0.65rem;
@@ -209,7 +182,7 @@ body {
   margin: 0;
 }
 
-.visualisation__status,
+.visualisation__phase,
 .target {
   display: flex;
   justify-content: space-between;
@@ -219,7 +192,7 @@ body {
   gap: 0.75rem;
 }
 
-.visualisation__status strong,
+.visualisation__phase strong,
 .target strong {
   font-size: 1.1rem;
   color: #f6f7fb;
@@ -281,7 +254,6 @@ body {
     grid-template-columns: 1fr;
   }
 
-  .controls__qubits,
   .controls__speed {
     margin-left: 0;
   }
